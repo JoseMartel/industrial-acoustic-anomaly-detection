@@ -1,0 +1,46 @@
+# --- Data & Local Environment ---
+data/
+.local/
+.venv/
+venv/
+env/
+ENV/
+
+# --- Python & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Machine Learning Models ---
+# We exclude all model weights as they are large and binary
+models/
+*.pth
+*.h5
+*.pkl
+
+# --- Results & Visualizations ---
+# Exclude experimental outputs and figures
+results/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+
+# --- Documentation Artifacts ---
+# Exclude LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+
+# --- System & IDE Files ---
+.DS_Store
+.vscode/
+.idea/
+.ipynb_checkpoints/

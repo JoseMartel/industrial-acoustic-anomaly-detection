@@ -1,0 +1,169 @@
+% Template for PSI5123 paper; adapted from ICASSP-2026
+\documentclass{article}
+\usepackage{spconf,amsmath,graphicx,hyperref}
+\usepackage{stfloats}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+
+% Definições de exemplo.
+\def\x{{\mathbf x}}
+\def\L{{\cal L}}
+
+% Título.
+\title{DETECÇÃO DE ANOMALIAS EM VENTILADORES INDUSTRIAIS BASEADA NA ANÁLISE DE SINAIS DE ÁUDIO E AUTOENCODERS CONVOLUCIONAIS}
+
+% Autor.
+\name{Jose Martel}
+\address{}
+
+\begin{document}
+%\ninept
+
+\maketitle
+
+\begin{abstract}
+Este projeto propõe o desenvolvimento de um sistema de manutenção preditiva não invasiva baseado na análise de sinais acústicos. Utilizando o dataset MIMII, será implementado um Autoencoder Convolucional (CAE) para aprender a representación latente dos sons de operação normal de ventiladores industriais. A detecção de anomalias fundamentar-se-á no erro de reconstrução (MSE) com pós-processamento de suavização, permitindo identificar falhas sem a necessidade de dados prévios de quebra. O desempenho será avaliado por meio de p-AUC, F1-Score e PR-AUC, garantindo uma baixa taxa de falsos alarmes, crítica em ambientes industriais.
+\end{abstract}
+
+\begin{keywords}
+Detecção de Anomalias, Ventiladores Industriais, Autoencoders Convolucionais, Aprendizado Não Supervisionado, Manutenção Preditiva.
+\end{keywords}
+
+\begin{figure*}[b]
+    \centering
+    \includegraphics[width=0.85\textwidth]{diagram.png}
+    \caption{Diagrama de blocos do modelo CAE proposto, detalhando o fluxo desde o espectrograma de entrada até o cálculo do erro de reconstrução (MSE).}
+    \label{fig:diagrama_blocos}
+\end{figure*}
+
+\section{INTRODUÇÃO}
+\label{sec:intro}
+
+No setor industrial, os ventiladores são componentes críticos cuja falha pode interromper linhas de produção completas. A Manutenção Preditiva (PdM) tradicional baseia-se em sensores de contato (acelerômetros), que são dispendiosos e difíceis de instalar em maquinários existentes. El monitoreo acústico surge como una alternativa de bajo costo y no invasiva.
+
+O principal desafio técnico reside no desbalanceamento de classes: em uma planta real, as máquinas operam em estado normal 99\% do tempo. Isso impossibilita o uso de aprendizado supervisionado convencional. Por isso, esta pesquisa adota uma abordagem de Aprendizado Não Supervisionado (Detecção de Anomalias), onde o modelo é treinado exclusivamente com dados de "operação normal" para aprender a reconstruir o padrão acústico base e sinalizar qualquer desvio significativo como uma falha potencial.
+
+\section{ESTADO DA ARTE}
+\label{sec:state}
+
+A detecção de sons anômalos (ASD) evoluiu significativamente com a transición de métodos estatísticos tradicionais (como GMM) para modelos de \textit{Deep Learning}. A publicação do dataset MIMII por Purohit et al. (2019) marcou um marco ao fornecer um banco de dados em larga escala com sons reais de maquinário industrial em funcionamento e falha, permitindo o treinamento de modelos de aprendizado não supervisionado baseados no erro de reconstrução de Autoencoders.
+
+Posteriormente, trabalhos como o de Suefusa et al. (2020) refinaram o estado da arte mediante o uso de redes neuronais de interpolação e a ênfase em métricas de alta fidelidade industrial, como el p-AUC. Estes estudos demonstram que o uso de espectrogramas Log-Mel como representação de entrada, combinado com arquiteturas de compressão-reconstrução, é o padrão mais robusto para capturar as assinaturas acústicas complexas e dinâmicas de ventiladores e motores, superando as limitações dos métodos lineares frente ao ruído ambiental.
+
+\section{BANCO DE DADOS E PRÉ-PROCESSAMENTO}
+\label{sec:data}
+
+\subsection{Descrição do Dataset (MIMII) e Importação}
+\label{ssec:dataset}
+
+Será utilizado um subconjunto do dataset MIMII focado em ventiladores industriais, cujas especificações técnicas estão detalhadas na Tabela \ref{tab:dataset}.
+
+\begin{table}[htb]
+\centering
+\caption{Especificações do subconjunto do dataset MIMII.}
+\label{tab:dataset}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Parâmetro} & \textbf{Valor / Especificação} \\ \hline
+Identificador da Máquina & ID 00 \\ \hline
+Categoria & Ventiladores (Fans) \\ \hline
+Condição de Ruído (SNR) & 6 dB \\ \hline
+Formato de Arquivo & PCM (.wav) \\ \hline
+Taxa de Amostragem ($Fs$) & 16 kHz \\ \hline
+Canais & Mono \\ \hline
+Duração da Amostra & 10 segundos \\ \hline
+Total de Arquivos (Normal) & 1010 \\ \hline
+\end{tabular}
+\end{table}
+
+\textbf{Estratégia de Importação}: Será utilizado Python com as bibliotecas Librosa e Soundfile para um carregamento eficiente. El gerenciamento de grandes volumes de dados será realizado por meio de um pipeline de dados otimizado (ex. \texttt{tf.data.Dataset} o \texttt{PyTorch DataLoader}), implementando uma estratégia de carregamento tardio (\textit{lazy loading}). Isso permite o treinamento em lotes (\textit{Batch Size} de 32) sem exceder a capacidade da memória RAM.
+
+\textbf{Entradas para Treinamento}: Cada arquivo de 10 segundos (160.000 amostras) é transformado em uma única "imagem" espectro-temporal de $128 \times 313$, que constitui a unidade básica de entrada para a rede convolucional.
+
+\subsection{Extração de Características (Feature Engineering)}
+\label{ssec:features}
+
+Para garantir a robustez do sistema, foi implementado o seguinte pipeline de processamento:
+\begin{enumerate}
+    \item \textbf{STFT (Short-Time Fourier Transform)}: Janelas de Hamming de 1024 amostras con un \textit{hop length} de 512, permitindo uma sobreposição (\textit{overlap}) de 50\%.
+    \item \textbf{Escalonamento Mel}: Aplicação de um banco de 128 filtros Mel para ressaltar bandas de frequência críticas.
+    \item \textbf{Log-Mel Spectrogram}: Aplicação do logaritmo para comprimir a faixa dinâmica.
+    \item \textbf{Normalização}: Escalonamento Min-Max entre [0, 1].
+\end{enumerate}
+
+\section{METODOLOGIA E DIAGRAMA DE BLOCOS}
+\label{sec:method}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.85\textwidth]{diagram.png}
+    \caption{Diagrama de blocos do modelo CAE proposto, detalhando o fluxo desde o espectrograma de entrada até o cálculo do erro de reconstrução (MSE).}
+    \label{fig:diagrama_blocos}
+\end{figure*}
+
+\subsection{Estrutura de Dados e Fluxo (Quantificação)}
+\label{ssec:flow}
+
+Abaixo detalham-se as etapas e o tamaño das estruturas de dados (tensores):
+\begin{enumerate}
+    \item \textbf{Entrada Áudio}: Sinal 1D bruto. \\ Tamanho: $[Batch \times 160000]$.
+    \item \textbf{Pré-processamento}: Saída: Espectrograma 2D. \\ Tamanho: $[Batch \times 128 \times 313 \times 1]$.
+    \item \textbf{Encoder (CAE)}:
+    \begin{itemize}
+        \item Camada 1: Conv2D (32, 3x3). \\ Tamanho: $[Batch \times 64 \times 156 \times 32]$.
+        \item Camada 2: Conv2D (16, 3x3). \\ Tamanho: $[Batch \times 32 \times 78 \times 16]$.
+        \item Espaço Latente: Representação comprimida (\textit{bottleneck}).
+    \end{itemize}
+    \item \textbf{Decoder (CAE)}: Reconstrução do espectrograma original. Saída Final: $\hat{x}$ \\ Tamanho: $[Batch \times 128 \times 313 \times 1]$.
+    \item \textbf{Pós-processamento}: Cálculo de erro e suavização temporal (\textit{Moving Average}).
+\end{enumerate}
+
+\subsection{Simplificações e Alterações}
+\label{ssec:changes}
+
+Diferente de Suefusa (2020), este projeto limita-se ao SNR 6dB para garantir a convergência no prazo proposto. Optou-se por um Autoencoder Convolucional (CAE) para priorizar a eficiência na detecção de texturas espectrais estacionárias.
+
+\section{MEDIDAS QUANTITATIVAS DE DESEMPENHO}
+\label{sec:perf}
+
+\subsection{Mean Squared Error (MSE) - Score de Anomalia}
+\label{ssec:mse}
+
+A medida de desvio básica é el erro de reconstrução frame a frame ($t$):
+\begin{equation}
+MSE(t) = \frac{1}{F \cdot C} \sum_{f=1}^{F} \sum_{c=1}^{C} (x_{f,t,c} - \hat{x}_{f,t,c})^2
+\end{equation}
+Onde $F=128$ (filtros Mel) e $C=1$ (canal).
+
+\subsection{Área sob a curva (AUC) y p-AUC}
+\label{ssec:pauc}
+
+El AUC mede a probabilidade de classificação correta. El p-AUC (Partial AUC) é definido como:
+\begin{equation}
+p\text{-}AUC = \int_{0}^{p} TPR(FPR) \, dFPR
+\end{equation}
+Onde $p=0.1$, garantindo baixa taxa de falsos alarmes.
+
+\subsection{F1-Score}
+\label{ssec:f1}
+
+Média harmônica entre precisão ($P$) y revocação ($R$):
+\begin{equation}
+F1 = 2 \cdot \frac{P \cdot R}{P + R}
+\end{equation}
+
+\section{AMBIENTE DE DESENVOLVIMENTO}
+\label{sec:env}
+
+O projeto utilizará Python 3.9, com as bibliotecas Librosa, PyTorch/Keras y Matplotlib, utilizando GPU (NVIDIA RTX o Colab) para treinamento acelerado.
+
+\vfill\pagebreak
+
+\begin{thebibliography}{9}
+\bibitem{purohit2019}
+H. Purohit, et al., "MIMII Dataset: Sound Dataset for Malfunctioning Industrial Machine Investigation and Inspection", 2019.
+\bibitem{suefusa2020}
+K. Suefusa, et al., "Anomalous Sound Detection Based on Interpolation Deep Neural Network", 2020.
+\end{thebibliography}
+
+\end{document}
