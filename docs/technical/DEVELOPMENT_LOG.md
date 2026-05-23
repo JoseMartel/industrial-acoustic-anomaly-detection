@@ -24,6 +24,35 @@
 *   **Results (ID 02)**: **ROC-AUC: 0.9880**, **p-AUC: 0.9469**
 *   **Conclusion**: The system is highly robust for Machine ID 02. The frequency-wise normalization proved to be the most impactful technical change.
 
-## Planned Iterations
-*   **Iteration 4 (Next)**: Multi-ID Training (Generalization). Training on IDs 00, 02, 04 and testing on ID 06.
-*   **Iteration 5**: Comparative Supervised Learning. CNN Classifier vs. Autoencoder to demonstrate domain adaptation failure in supervised models.
+## Iteration 4: Multi-ID Training (IDs 00, 02, 04)
+*   **Status**: Completed
+*   **Configuration**: Combined training with normal sounds from IDs 00, 02, and 04. Evaluation using combined testing sets of the same IDs.
+*   **Hypothesis**: The model can generalize and identify anomalies across different physical machines of the same type (Fan).
+*   **Results**: **ROC-AUC: 0.8154**, **p-AUC: 0.7060**
+*   **Analysis**: 
+    *   **Confirmation**: As seen in logs, exactly 20% of normal files and all abnormal files from IDs 00, 02, and 04 were used for evaluation.
+    *   **Performance Drop**: There is a significant drop (~17%) compared to the specialized ID 02 model. This suggests that "normality" varies between machines, and a single global normalization (Mean/Std across all IDs) might be blurring the distinctive features of each machine.
+    *   **Challenge**: The model now faces a more complex distribution of "normal" sound, making the reconstruction task harder for the bottleneck.
+
+## Planned Iterations & Research Roadmap
+
+### Iteration 5: SNR Sensitivity & Noise Verification
+*   **Goal**: Confirm if background noise (SNR) is the primary factor degrading multi-ID performance.
+*   **Method**: Evaluate the current Iteration 4 model across different SNR levels available in the MIMII dataset (6dB, 0dB, -6dB).
+*   **Expected Metric**: A significant AUC drop at lower SNR would confirm the need for noise-robust features.
+
+### Iteration 6: Machine-Agnostic Generalization (DANN)
+*   **Goal**: Improve multi-ID AUC (currently 0.81) and enable support for unseen Machine IDs.
+*   **Technique**: **Domain Adversarial Neural Networks (DANN)**.
+*   **Implementation**: 
+    *   Add a Gradient Reversal Layer (GRL) connected to the bottleneck.
+    *   Train a secondary classifier to predict Machine ID, forcing the Encoder to learn ID-invariant features.
+
+### Iteration 7: Invariant Feature Engineering
+*   **Goal**: Reduce sensitivity to absolute energy levels and machine-specific "bias".
+*   **Methods**:
+    *   **Instance Normalization**: Replace BatchNorm with InstanceNorm to focus on spectrogram "texture" rather than global energy.
+    *   **Temporal Dynamics**: Incorporate Delta and Delta-Delta coefficients to the input features to highlight temporal changes over static background noise.
+
+### Long-term: Zero-Shot / ID-10 Support
+*   **Strategy**: Implementation of a 5-second "Reference Calibration" step. Instead of retraining, use a small window of normal operation to dynamically adjust the anomaly threshold for new units.

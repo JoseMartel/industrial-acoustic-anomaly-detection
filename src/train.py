@@ -14,7 +14,7 @@ from model_ae import CAE
 
 def train():
     # 1. Configuración de rutas (Relativas a la raíz del proyecto)
-    DATA_PATH_NORMAL = "data/6_dB_fan/fan/id_02/normal/*.wav"
+    TARGET_IDS = ["00", "02", "04"]
     BATCH_SIZE = 32
     LR = 1e-3
     EPOCHS = 50
@@ -24,9 +24,15 @@ def train():
     print(f"Usando dispositivo: {DEVICE}")
 
     # 2. Preparar lista de archivos
-    all_normal_files = sorted(glob.glob(DATA_PATH_NORMAL))
+    all_normal_files = []
+    for machine_id in TARGET_IDS:
+        path = f"data/6_dB_fan/fan/id_{machine_id}/normal/*.wav"
+        files = sorted(glob.glob(path))
+        print(f"ID {machine_id}: Encontrados {len(files)} archivos normales.")
+        all_normal_files.extend(files)
+
     if not all_normal_files:
-        print(f"Error: No se encontraron archivos en {DATA_PATH_NORMAL}")
+        print(f"Error: No se encontraron archivos para los IDs {TARGET_IDS}")
         return
 
     train_files, val_files = train_test_split(all_normal_files, test_size=0.2, random_state=42)

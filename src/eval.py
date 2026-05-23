@@ -13,18 +13,34 @@ from model_ae import CAE
 
 def evaluate():
     # 1. Configuración de rutas (Relativas a la raíz del proyecto)
-    DATA_PATH_NORMAL = "data/6_dB_fan/fan/id_02/normal/*.wav"
-    DATA_PATH_ABNORMAL = "data/6_dB_fan/fan/id_02/abnormal/*.wav"
+    TARGET_IDS = ["00", "02", "04"]
     MODEL_PATH = "models/unsupervised/best_model.pth"
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 2. Cargar rutas
-    all_normal = sorted(glob.glob(DATA_PATH_NORMAL))
-    if not all_normal:
-        print(f"Error: No se encontraron archivos en {DATA_PATH_NORMAL}")
+    val_files = []
+    abnormal_files = []
+    
+    for machine_id in TARGET_IDS:
+        path_normal = f"data/6_dB_fan/fan/id_{machine_id}/normal/*.wav"
+        path_abnormal = f"data/6_dB_fan/fan/id_{machine_id}/abnormal/*.wav"
+        
+        all_normal = sorted(glob.glob(path_normal))
+        if not all_normal:
+            print(f"Advertencia: No se encontraron archivos normales para ID {machine_id}")
+            continue
+            
+        # Usamos el mismo split que en el entrenamiento
+        _, id_val_files = train_test_split(all_normal, test_size=0.2, random_state=42)
+        val_files.extend(id_val_files)
+        
+        id_abnormal_files = sorted(glob.glob(path_abnormal))
+        abnormal_files.extend(id_abnormal_files)
+        print(f"ID {machine_id}: {len(id_val_files)} archivos de test (normal) y {len(id_abnormal_files)} anormales.")
+
+    if not val_files or not abnormal_files:
+        print("Error: No hay suficientes archivos para evaluar.")
         return
-    _, val_files = train_test_split(all_normal, test_size=0.2, random_state=42)
-    abnormal_files = sorted(glob.glob(DATA_PATH_ABNORMAL))
 
     # 3. Cargar Modelo y Metadatos Z-Score
     if not os.path.exists(MODEL_PATH):
