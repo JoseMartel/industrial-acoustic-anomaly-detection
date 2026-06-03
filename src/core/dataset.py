@@ -8,9 +8,11 @@ from torch.utils.data import Dataset, DataLoader
 class MIMIIDataset(Dataset):
     """
     Dataset class con Normalización Z-Score por Frecuencia.
+    Soporta etiquetas opcionales para entrenamiento supervisado.
     """
-    def __init__(self, file_paths, n_mels=128, n_fft=1024, hop_length=512, global_mean=None, global_std=None, normalize=True):
+    def __init__(self, file_paths, labels=None, n_mels=128, n_fft=1024, hop_length=512, global_mean=None, global_std=None, normalize=True):
         self.file_paths = file_paths
+        self.labels = labels
         self.n_mels = n_mels
         self.n_fft = n_fft
         self.hop_length = hop_length
@@ -55,4 +57,9 @@ class MIMIIDataset(Dataset):
         # 5. Convertir a Tensor
         tensor_spec = torch.from_numpy(normalized_spec).unsqueeze(0).float()
         
+        # 6. Retornar con etiqueta si existe
+        if self.labels is not None:
+            label = torch.tensor(self.labels[idx]).float()
+            return tensor_spec, label
+            
         return tensor_spec

@@ -12,13 +12,13 @@ pip install -r requirements.txt --quiet
 
 # 2. Entrenamiento
 echo "[2/3] Iniciando entrenamiento (Normalización por Frecuencia)..."
-# Ejecutamos con PYTHONPATH=src para que los scripts encuentren sus módulos
-PYTHONPATH=src python3 src/train.py
+# Usamos el experimento 02 (Generalización Multi-ID) como default actual
+python3 src/unsupervised/exp02_multid_generalization/train.py
 
 # 3. Evaluación
 if [ -f "models/unsupervised/best_model.pth" ]; then
     echo "[3/3] Iniciando evaluación final..."
-    PYTHONPATH=src python3 src/eval.py
+    python3 src/unsupervised/exp02_multid_generalization/eval.py
     echo "-------------------------------------------------------"
     echo "PROCESO COMPLETADO CON ÉXITO"
     echo "Resultados en: results/figures/"

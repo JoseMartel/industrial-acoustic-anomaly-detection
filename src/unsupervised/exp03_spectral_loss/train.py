@@ -8,9 +8,14 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
-# Importar nuestras clases personalizadas (desde la misma carpeta src)
-from dataset import MIMIIDataset
-from model_ae import CAE
+# Importar componentes del núcleo (core)
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
+from core.dataset import MIMIIDataset
+from core.model_ae import CAE
+from core.losses import MultiScaleSpectralLoss
 
 def train():
     # 1. Configuración de rutas (Relativas a la raíz del proyecto)
@@ -19,7 +24,7 @@ def train():
     LR = 1e-3
     EPOCHS = 50
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    MODEL_SAVE_PATH = "models/unsupervised/best_model.pth"
+    MODEL_SAVE_PATH = "models/unsupervised/spectral_loss_model.pth"
 
     print(f"Usando dispositivo: {DEVICE}")
 
@@ -60,7 +65,7 @@ def train():
 
     # 5. Instanciar Modelo
     model = CAE().to(DEVICE)
-    criterion = nn.MSELoss()
+    criterion = MultiScaleSpectralLoss(alpha=0.5)
     optimizer = optim.Adam(model.parameters(), lr=LR)
 
     # 6. Ciclo de Entrenamiento

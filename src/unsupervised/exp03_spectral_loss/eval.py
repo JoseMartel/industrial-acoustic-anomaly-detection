@@ -7,14 +7,18 @@ from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve
 
-# Importar nuestras clases personalizadas
-from dataset import MIMIIDataset
-from model_ae import CAE
+# Importar componentes del núcleo (core)
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+
+from core.dataset import MIMIIDataset
+from core.model_ae import CAE
 
 def evaluate():
     # 1. Configuración de rutas (Relativas a la raíz del proyecto)
     TARGET_IDS = ["00", "02", "04"]
-    MODEL_PATH = "models/unsupervised/best_model.pth"
+    MODEL_PATH = "models/unsupervised/spectral_loss_model.pth"
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # 2. Cargar rutas
