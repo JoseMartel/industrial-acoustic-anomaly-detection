@@ -27,7 +27,6 @@ results/
 *.png
 *.jpg
 *.jpeg
-*.pdf
 
 # --- Documentation Artifacts ---
 # Exclude LaTeX auxiliary files
